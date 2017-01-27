@@ -1,0 +1,10 @@
+-lib file-save
+-lib file-load
+-lib zip
+-lib statistics
+-lib trace-timer
+-cp Source
+-swf Server/ZipMP3toZipWAV.swf
+-swf-header 800:600:60:FFFFFF
+-swf-version 15.0
+-main Main

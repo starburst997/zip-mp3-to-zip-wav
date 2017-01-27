@@ -1,0 +1,8 @@
+-lib file-save
+-lib file-load
+-lib zip
+-lib statistics
+-lib trace-timer
+-cp Source
+-js Server/js/ZipMP3toZipWAV.js
+-main Main
