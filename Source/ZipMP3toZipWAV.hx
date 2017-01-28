@@ -1,11 +1,35 @@
 package;
 
-import file.load.Loaders;
+import haxe.ds.StringMap;
+import haxe.io.Bytes;
+import haxe.io.BytesOutput;
+
 import file.load.FileLoad;
 import file.save.FileSave;
 
+import zip.Zip;
+import zip.ZipEntry;
+
 import statistics.TraceTimer;
 import statistics.Stats;
+
+// Flash
+import flash.Lib;
+import flash.media.Sound;
+import flash.events.Event;
+import flash.utils.ByteArray;
+
+using StringTools;
+
+typedef WAVEntry = {
+  var data:Bytes;
+  var name:String;
+};
+
+typedef XMLEntry = {
+  var data:String;
+  var name:String;
+};
 
 /**
  * Just a simple tool that takes a Zip File, and replace the MP3 files it encountered to WAV files.
@@ -18,6 +42,19 @@ class ZipMP3toZipWAV
   public static inline var NOTE00:String = PATH + "NOTE00.note";
   public static inline var NOTE01:String = PATH + "NOTE01.note";
 
+  // Zip entries
+  var mp3s:Array<ZipEntry> = [];
+  var samples:Array<ZipEntry> = [];
+  var others:Array<ZipEntry> = [];
+  
+  var samplesDecoded:Array<XMLEntry> = [];
+  var mp3sDecoded:Array<WAVEntry> = [];
+  
+  var zip:Zip;
+  
+  var zipDone = false;
+  var samplesDone = false;
+  
   // Stats
   var stats = new Stats();
 
@@ -40,11 +77,138 @@ class ZipMP3toZipWAV
       complete: function(bytes)
       {
         trace("Download complete", bytes.length);
+        
+        // Parse ZIP
+        zip = new Zip(bytes);
+        
+        // Parse 1 per frame
+        Lib.current.stage.addEventListener( Event.ENTER_FRAME, enterFrameHandler, false, 0, true );
       },
       error: function(error)
       {
         trace("Error:", error);
       }
     });
+  }
+  
+  // Save to WAV Bytes (16bits)
+  public function toWAV( floats:Bytes )
+  {
+    var channels = 2;
+    var sampleRate = 44100;
+    var length = Std.int(floats.length / (8 * 2));
+    
+    var bitsPerSample = 16;
+    var byteRate = Std.int(channels * sampleRate * bitsPerSample / 8);
+    var blockAlign = Std.int(channels * bitsPerSample / 8);
+    var dataLength = length * channels * 2;
+
+    var output = new BytesOutput();
+    output.bigEndian = false;
+    output.writeString("RIFF");
+    output.writeInt32(36 + dataLength);
+    output.writeString("WAVEfmt ");
+    output.writeInt32(16);
+    output.writeUInt16(1);
+    output.writeUInt16(channels);
+    output.writeInt32(sampleRate);
+    output.writeInt32(byteRate);
+    output.writeUInt16(blockAlign);
+    output.writeUInt16(bitsPerSample);
+    output.writeString("data");
+    output.writeInt32(dataLength);
+
+    // Read Samples one after another (testing actual float conversion also)
+    var n = length * channels, ival:Int;
+    for ( i in 0...n )
+    {
+      output.writeInt16( Std.int(floats.getFloat(i * 8) * 32767) );
+    }
+
+    return output.getBytes();
+  }
+  
+  // Enter Frame
+  function enterFrameHandler(e:Event)
+  {
+    if ( !zipDone )
+    {
+      var entry:ZipEntry, i:Int = 0;
+      
+      while ( (i++ < 150) && ((entry = zip.readEntryHeader()) != null) )
+      {
+        // Check if MP3
+        if ( entry.fileName.toLowerCase().endsWith(".mp3") )
+        {
+          mp3s.push(entry);
+          
+          trace("MP3 Entry added", entry.fileName);
+        }
+        else if ( entry.fileName.toLowerCase().startsWith("samples/") )
+        {
+          samples.push(entry);
+          
+          trace("Sample Entry added", entry.fileName);
+        }
+        else
+        {
+          others.push(entry);
+          
+          trace("Other Entry added", entry.fileName);
+        }
+      }
+      
+      if ( entry == null )
+      {
+        zipDone = true;
+        
+        trace("Zip Done!", mp3s.length, "mp3s", samples.length, "samples", others.length, "others");
+      }
+    }
+    else if ( !samplesDone )
+    {
+      for ( entry in samples )
+      {
+        samplesDecoded.push(
+        {
+          name:entry.fileName, 
+          data:Zip.getString(entry).replace(".mp3", ".wav")
+        });
+      }
+      
+      samplesDone = true;
+      
+      trace(samples.length, "Samples parsed");
+    }
+    else if ( mp3s.length > 0 )
+    {
+      var entry = mp3s.pop();
+      var bytes = Zip.getBytes(entry);
+      
+      var sound:Sound = new Sound();
+      sound.loadCompressedDataFromByteArray(bytes.getData(), bytes.length);
+      
+      var decoded = new ByteArray();
+      sound.extract(decoded, 10000000000); // Just a big enough number
+      
+      // Create WAV file
+      var wav = toWAV(Bytes.ofData(decoded));
+      
+      // Add to array
+      mp3sDecoded.push(
+      {
+        name: entry.fileName.replace(".mp3", ".wav"),
+        data: wav
+      });
+      
+      trace("Decoded!", decoded.length);
+    }
+    else
+    {
+      // Create new ZIP
+      
+      
+      trace("Convert done!");
+    }
   }
 }

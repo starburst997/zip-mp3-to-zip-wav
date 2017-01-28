@@ -8,13 +8,13 @@ import openfl.display.Sprite;
  */
 class MainOpenFL extends Sprite
 {
-  var program:ZipMP3toZipWav;
+  var program:ZipMP3toZipWAV;
 
   // Init
 	public function new()
   {
-		super ();
+		super();
 
-		program = new ZipMP3toZipWav();
+		program = new ZipMP3toZipWAV();
 	}
 }

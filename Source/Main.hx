@@ -6,11 +6,11 @@ package;
  */
 class Main
 {
-  var program:ZipMP3toZipWav;
+  var program:ZipMP3toZipWAV;
 
   public function new()
   {
-    program = new ZipMP3toZipWav();
+    program = new ZipMP3toZipWAV();
   }
 
   static function main()
