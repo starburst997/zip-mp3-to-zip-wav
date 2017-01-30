@@ -8,6 +8,8 @@ import file.load.FileLoad;
 import file.save.FileSave;
 
 import zip.Zip;
+import zip.ZipReader;
+import zip.ZipWriter;
 import zip.ZipEntry;
 
 import statistics.TraceTimer;
@@ -42,6 +44,10 @@ class ZipMP3toZipWAV
   public static inline var NOTE00:String = PATH + "NOTE00.note";
   public static inline var NOTE01:String = PATH + "NOTE01.note";
 
+  // Create new ZIP
+  var writer = new ZipWriter();
+  var date = new Date(1988, 11, 2, 12, 45, 0); // Easter egg on NOTE font file
+  
   // Zip entries
   var mp3s:Array<ZipEntry> = [];
   var samples:Array<ZipEntry> = [];
@@ -50,10 +56,12 @@ class ZipMP3toZipWAV
   var samplesDecoded:Array<XMLEntry> = [];
   var mp3sDecoded:Array<WAVEntry> = [];
   
-  var zip:Zip;
+  var zip:ZipReader;
   
   var zipDone = false;
   var samplesDone = false;
+  
+  var saved:Bool = false;
   
   // Stats
   var stats = new Stats();
@@ -79,7 +87,7 @@ class ZipMP3toZipWAV
         trace("Download complete", bytes.length);
         
         // Parse ZIP
-        zip = new Zip(bytes);
+        zip = new ZipReader(bytes);
         
         // Parse 1 per frame
         Lib.current.stage.addEventListener( Event.ENTER_FRAME, enterFrameHandler, false, 0, true );
@@ -135,7 +143,7 @@ class ZipMP3toZipWAV
     {
       var entry:ZipEntry, i:Int = 0;
       
-      while ( (i++ < 150) && ((entry = zip.readEntryHeader()) != null) )
+      while ( (i++ < 150) && ((entry = zip.getNextEntry()) != null) )
       {
         // Check if MP3
         if ( entry.fileName.toLowerCase().endsWith(".mp3") )
@@ -203,10 +211,31 @@ class ZipMP3toZipWAV
       
       trace("Decoded!", decoded.length);
     }
-    else
+    else if ( samplesDecoded.length > 0 )
     {
-      // Create new ZIP
+      var xml = samplesDecoded.pop();
+      writer.addString(xml.data, xml.name, true, date);
       
+      trace("Zipped", xml.name);
+    }
+    else if ( mp3sDecoded.length > 0 )
+    {
+      var wav = mp3sDecoded.pop();
+      writer.addBytes(wav.data, wav.name, false, date);
+      
+      trace("Zipped", wav.name);
+    }
+    else if ( !saved )
+    {
+      saved = true;
+      
+      // Write back entries
+      for ( entry in others.iterator() )
+      {
+        writer.addEntry(entry);
+      }
+      
+      FileSave.saveClickBytes(writer.finalize(), "mp32wav.zip");
       
       trace("Convert done!");
     }
