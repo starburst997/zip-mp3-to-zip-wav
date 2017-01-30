@@ -73,7 +73,7 @@ class ZipMP3toZipWAV
 
     TraceTimer.activate();
 
-    loadZip( NOTE00 );
+    loadZip( NOTE01 );
   }
 
   // Load a zip and process it
@@ -100,7 +100,7 @@ class ZipMP3toZipWAV
   }
   
   // Save to WAV Bytes (16bits)
-  public function toWAV( floats:Bytes )
+  public function toWAV( floats:ByteArray )
   {
     var channels = 2;
     var sampleRate = 44100;
@@ -125,14 +125,15 @@ class ZipMP3toZipWAV
     output.writeUInt16(bitsPerSample);
     output.writeString("data");
     output.writeInt32(dataLength);
-
+    
     // Read Samples one after another (testing actual float conversion also)
     var n = length * channels, ival:Int;
+    floats.position = 0;
     for ( i in 0...n )
     {
-      output.writeInt16( Std.int(floats.getFloat(i * 8) * 32767) );
+      output.writeInt16( Std.int(floats.readFloat() * 32767) );
     }
-
+    
     return output.getBytes();
   }
   
@@ -179,8 +180,8 @@ class ZipMP3toZipWAV
       {
         samplesDecoded.push(
         {
-          name:entry.fileName, 
-          data:Zip.getString(entry).replace(".mp3", ".wav")
+          name: entry.fileName, 
+          data: Zip.getString(entry).replace(".mp3", ".wav")
         });
       }
       
@@ -200,7 +201,7 @@ class ZipMP3toZipWAV
       sound.extract(decoded, 10000000000); // Just a big enough number
       
       // Create WAV file
-      var wav = toWAV(Bytes.ofData(decoded));
+      var wav = toWAV(decoded);// Bytes.ofData(decoded));
       
       // Add to array
       mp3sDecoded.push(
