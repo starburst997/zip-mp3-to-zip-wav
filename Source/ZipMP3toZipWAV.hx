@@ -104,7 +104,7 @@ class ZipMP3toZipWAV
   {
     var channels = 2;
     var sampleRate = 44100;
-    var length = Std.int(floats.length / (8 * 2));
+    var length = Std.int(floats.length / (4 * 2));
     
     var bitsPerSample = 16;
     var byteRate = Std.int(channels * sampleRate * bitsPerSample / 8);
