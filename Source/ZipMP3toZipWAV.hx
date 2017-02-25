@@ -73,7 +73,7 @@ class ZipMP3toZipWAV
 
     TraceTimer.activate();
 
-    loadZip( NOTE01 );
+    loadZip( NOTE00 );
   }
 
   // Load a zip and process it
@@ -181,7 +181,7 @@ class ZipMP3toZipWAV
         samplesDecoded.push(
         {
           name: entry.fileName, 
-          data: Zip.getString(entry).replace(".mp3", ".wav")
+          data: Zip.getString(entry).replace(".mp3", ".ogg")
         });
       }
       
@@ -206,7 +206,7 @@ class ZipMP3toZipWAV
       // Add to array
       mp3sDecoded.push(
       {
-        name: entry.fileName.replace(".mp3", ".wav"),
+        name: entry.fileName.replace(".mp3", "_mp3_.wav"),
         data: wav
       });
       
